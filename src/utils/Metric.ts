@@ -1,52 +1,52 @@
 export class Metric {
-	private metricName: string;
-	private labels: string[];
-	private map: Record<string, any[]>;
+  private metricName: string;
+  private labels: string[];
+  private map: Record<string, any[]>;
 
-	constructor(name: string, labels: string[]) {
-		this.metricName = name;
-		this.labels = labels;
-		this.map = {};
-	}
+  constructor(name: string, labels: string[]) {
+    this.metricName = name;
+    this.labels = labels;
+    this.map = {};
+  }
 
-	getServiceLabels(): string[] {
-		return this.labels;
-	}
+  getServiceLabels(): string[] {
+    return this.labels;
+  }
 
-	setLabels(labels: string[]) {
-		this.labels = labels;
-	}
+  setLabels(labels: string[]) {
+    this.labels = labels;
+  }
 
-	add(labels: string[], value: any) {
-		const key = labels.join(':');
-		if (!this.map[key]) {
-			this.map[key] = [];
-		}
-		this.map[key].push(value);
-	}
+  add(labels: string[], value: any) {
+    const key = labels.join(':');
+    if (!this.map[key]) {
+      this.map[key] = [];
+    }
+    this.map[key].push(value);
+  }
 
-	reset() {
-		this.map = {};
-	}
+  reset() {
+    this.map = {};
+  }
 
-	getValues(labels: string[]): any[] {
-		const key = labels.join(':');
-		return this.map[key] || [];
-	}
+  getValues(labels: string[]): any[] {
+    const key = labels.join(':');
+    return this.map[key] || [];
+  }
 
-	getAllValues(): Record<string, any[]> {
-		return { ...this.map };
-	}
+  getAllValues(): Record<string, any[]> {
+    return { ...this.map };
+  }
 
-	getName(): string {
-		return this.metricName;
-	}
+  getName(): string {
+    return this.metricName;
+  }
 
-	getLabels(): string[][] {
-		return Object.keys(this.map).map((key) => key.split(':'));
-	}
+  getLabels(): string[][] {
+    return Object.keys(this.map).map((key) => key.split(':'));
+  }
 
-	toString(): string {
-		return `Metric: ${this.metricName}\n${JSON.stringify(this.map, null, 2)}`;
-	}
+  toString(): string {
+    return `Metric: ${this.metricName}\n${JSON.stringify(this.map, null, 2)}`;
+  }
 }

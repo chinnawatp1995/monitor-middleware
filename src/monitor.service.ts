@@ -38,8 +38,8 @@ export class MonitorService {
 
       const mem = process.memoryUsage();
       const memoryUsage = mem.rss / os.totalmem();
-      this.cpu.add([MACHINE_ID], cpuUsage);
-      this.mem.add([MACHINE_ID], memoryUsage);
+      this.cpu.add([MACHINE_ID], [cpuUsage]);
+      this.mem.add([MACHINE_ID], [memoryUsage]);
     }, 2 * 1_000);
   }
 
@@ -53,9 +53,9 @@ export class MonitorService {
     setInterval(async () => {
       const endPoint = 'http://localhost:3010/monitor-server/collect-metrics';
       try {
-        console.log(this.request.getAllValues());
-        console.log(this.cpu.getAllValues());
-        console.log(this.mem.getAllValues());
+        // console.log(this.request.getAllValues());
+        // console.log(this.cpu.getAllValues());
+        // console.log(this.mem.getAllValues());
         await axios.post(
           // 'http://' +
           // 	(process.env.END_POINT || 'localhost:') +

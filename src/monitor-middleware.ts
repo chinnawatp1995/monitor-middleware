@@ -13,16 +13,18 @@ export let MACHINE_ID = `${os.hostname()}`;
 @Injectable()
 export class MonitorMiddleware implements NestMiddleware {
   private job: string;
+  private controller: string;
   private requestMetric: Metric;
   private cpuMetric: Metric;
   private memMetric: Metric;
   constructor(
     private readonly jobName: string,
     private readonly machineId?: string,
+    private readonly controllerName?: string,
   ) {
     this.job = jobName;
     MACHINE_ID = machineId ?? MACHINE_ID;
-
+    this.controller = controllerName ?? '';
     this.requestMetric = requestMetric;
     this.cpuMetric = cpuMetric;
     this.memMetric = memMetric;
@@ -34,12 +36,12 @@ export class MonitorMiddleware implements NestMiddleware {
 
   use = (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { baseUrl, method } = req;
+      const { method, path } = req;
 
       const requestObj: TRequestValue = {
         time: getTIMESTAMPTZ(),
         method,
-        path: baseUrl,
+        path: path,
         errorMessage: '',
       };
 
@@ -71,6 +73,7 @@ export class MonitorMiddleware implements NestMiddleware {
             requestObj.statusCode,
             requestObj.responseTime,
             requestObj.errorMessage,
+            this.controller,
           ],
         );
       });
@@ -84,10 +87,14 @@ export class MonitorMiddleware implements NestMiddleware {
 }
 
 // Middleware Factory
-export function MonitorMiddlewareFactory(job: string, machineId: string) {
+export function MonitorMiddlewareFactory(
+  job: string,
+  machineId: string,
+  controller: string,
+) {
   // if (!machineId) {
   // 	throw new Error('MACHINE_ID_MUST_BE_DEFINED');
   // }
   console.log(machineId);
-  return new MonitorMiddleware(job, machineId);
+  return new MonitorMiddleware(job, machineId, controller);
 }
