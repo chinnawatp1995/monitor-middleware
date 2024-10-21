@@ -6,13 +6,12 @@ import { MACHINE_ID } from './monitor-middleware';
 import { cpuMetric, memMetric, requestMetric } from './metrics';
 import { Metric } from './utils/Metric';
 
-let previousCpuUsage = process.cpuUsage();
-
 @Injectable()
 export class MonitorService {
   private request: Metric;
   private cpu: Metric;
   private mem: Metric;
+  private lastCpuUsage: { idle: number; total: number } | null = null;
 
   constructor() {
     this.request = requestMetric;
@@ -25,21 +24,50 @@ export class MonitorService {
     this.push();
   }
 
+  private calculateCpuUsage(): number {
+    const cpus = os.cpus();
+    let idleTime = 0;
+    let totalTime = 0;
+
+    for (const cpu of cpus) {
+      for (const type in cpu.times) {
+        totalTime += cpu.times[type];
+      }
+      idleTime += cpu.times.idle;
+    }
+
+    if (this.lastCpuUsage) {
+      const idleDiff = idleTime - this.lastCpuUsage.idle;
+      const totalDiff = totalTime - this.lastCpuUsage.total;
+      const cpuUsage = 100 * (1 - idleDiff / totalDiff); // Convert to percentage
+      this.lastCpuUsage = { idle: idleTime, total: totalTime };
+      return cpuUsage;
+    } else {
+      this.lastCpuUsage = { idle: idleTime, total: totalTime };
+      return 0;
+    }
+  }
+
+  private calculateMemoryUsage(): { [key: string]: number } {
+    const mem = process.memoryUsage();
+    const totalMem = os.totalmem();
+
+    return {
+      rss: 100 * (mem.rss / totalMem),
+      heapTotal: 100 * (mem.heapTotal / totalMem),
+      heapUsed: 100 * (mem.heapUsed / totalMem),
+      external: 100 * (mem.external / totalMem),
+    };
+  }
+
   private collectResourceUsage() {
     setInterval(() => {
-      const currentCpuUsage = process.cpuUsage();
-      const elapsedUserCpu = currentCpuUsage.user - previousCpuUsage.user;
-      const elapsedSystemCpu = currentCpuUsage.system - previousCpuUsage.system;
-      const elapsedCpuTime = (elapsedUserCpu + elapsedSystemCpu) / 1000;
+      const cpuUsage = this.calculateCpuUsage();
 
-      const cpuUsage = elapsedCpuTime / os.cpus().length;
+      const memoryUsage = this.calculateMemoryUsage();
 
-      previousCpuUsage = currentCpuUsage;
-
-      const mem = process.memoryUsage();
-      const memoryUsage = mem.rss / os.totalmem();
       this.cpu.add([MACHINE_ID], [cpuUsage]);
-      this.mem.add([MACHINE_ID], [memoryUsage]);
+      this.mem.add([MACHINE_ID], [memoryUsage.rss]);
     }, 2 * 1_000);
   }
 
