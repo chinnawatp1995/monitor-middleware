@@ -69,8 +69,8 @@ export class MonitorService {
       interface: stat.iface,
       rx_bytes: stat.rx_bytes,
       tx_bytes: stat.tx_bytes,
-      rx_sec: stat.rx_sec,
-      tx_sec: stat.tx_sec,
+      rx_sec: stat.rx_sec ?? 0,
+      tx_sec: stat.tx_sec ?? 0,
     }));
 
     return bandwidthUsage;
