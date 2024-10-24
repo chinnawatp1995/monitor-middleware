@@ -76,23 +76,6 @@ export class MonitorService {
     return bandwidthUsage;
   }
 
-  private getNetworkUsage() {
-    const interfaces = os.networkInterfaces();
-    let totalBytesReceived = 0;
-    let totalBytesTransmitted = 0;
-
-    Object.values(interfaces).forEach((interfaces) => {
-      interfaces.forEach((info) => {
-        if (!info.internal && info.family === 'IPv4') {
-          totalBytesReceived += (info as any).rx_bytes || 0;
-          totalBytesTransmitted += (info as any).tx_bytes || 0;
-        }
-      });
-    });
-
-    return { received: totalBytesReceived, transmitted: totalBytesTransmitted };
-  }
-
   private async collectResourceUsage() {
     setInterval(async () => {
       const cpuUsage = this.calculateCpuUsage();
