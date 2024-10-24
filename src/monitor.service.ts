@@ -12,6 +12,7 @@ export class MonitorService {
   private cpu: Metric;
   private mem: Metric;
   private network: Metric;
+  private resourceCollectionTimes: number[] = [];
   private lastCpuUsage: { idle: number; total: number } | null = null;
 
   constructor() {
@@ -92,13 +93,13 @@ export class MonitorService {
     return { received: totalBytesReceived, transmitted: totalBytesTransmitted };
   }
 
-  private collectResourceUsage() {
-    setInterval(() => {
+  private async collectResourceUsage() {
+    setInterval(async () => {
       const cpuUsage = this.calculateCpuUsage();
 
       const memoryUsage = this.calculateMemoryUsage();
 
-      const networkUsage = this.calculatateNetworkBandwidth();
+      const networkUsage = await this.calculatateNetworkBandwidth();
 
       this.cpu.add([MACHINE_ID], [cpuUsage]);
       this.mem.add([MACHINE_ID], [memoryUsage.rss]);
@@ -106,6 +107,10 @@ export class MonitorService {
         [MACHINE_ID],
         [(networkUsage as any).rx_sec, (networkUsage as any).tx_sec],
       );
+      this.resourceCollectionTimes = [
+        ...this.resourceCollectionTimes,
+        new Date().getTime(),
+      ];
     }, 2 * 1_000);
   }
 
@@ -114,6 +119,7 @@ export class MonitorService {
     this.cpu.reset();
     this.mem.reset();
     this.network.reset();
+    this.resourceCollectionTimes = [];
   }
 
   private async push() {
@@ -131,6 +137,7 @@ export class MonitorService {
           endPoint,
           {
             tags: this.request.getServiceLabels(),
+            resourceCollectionTimes: this.resourceCollectionTimes,
             request: this.request.getAllValues(),
             cpu: this.cpu.getAllValues(),
             mem: this.mem.getAllValues(),
