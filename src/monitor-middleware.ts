@@ -5,7 +5,7 @@ import * as os from 'os';
 import { TRequestValue } from './utils/metrics.type';
 import { getTIMESTAMPTZ } from './utils/util-functions';
 import { Metric } from './utils/Metric';
-import { requestMetric, cpuMetric, memMetric } from './metrics';
+import { requestMetric, cpuMetric, memMetric, networkMetric } from './metrics';
 
 // export let MACHINE_ID = `${os.hostname()}_${os.networkInterfaces['eth0'].mac}`;
 export let MACHINE_ID = `${os.hostname()}`;
@@ -17,6 +17,7 @@ export class MonitorMiddleware implements NestMiddleware {
   private requestMetric: Metric;
   private cpuMetric: Metric;
   private memMetric: Metric;
+  private networkMetric: Metric;
   constructor(
     private readonly jobName: string,
     private readonly machineId?: string,
@@ -28,10 +29,12 @@ export class MonitorMiddleware implements NestMiddleware {
     this.requestMetric = requestMetric;
     this.cpuMetric = cpuMetric;
     this.memMetric = memMetric;
+    this.networkMetric = networkMetric;
 
     this.requestMetric.setLabels([this.job, MACHINE_ID]);
     this.cpuMetric.setLabels([MACHINE_ID]);
     this.memMetric.setLabels([MACHINE_ID]);
+    this.networkMetric.setLabels([MACHINE_ID]);
   }
 
   use = (req: Request, res: Response, next: NextFunction) => {
