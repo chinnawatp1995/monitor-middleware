@@ -3,7 +3,6 @@ import { Request, Response, NextFunction } from 'express';
 import { ThaiTime } from '@midas-soft/midas-common';
 import * as os from 'os';
 import { TRequestValue } from './utils/metrics.type';
-import { getTIMESTAMPTZ } from './utils/util-functions';
 import { Metric } from './utils/Metric';
 import { requestMetric, cpuMetric, memMetric, networkMetric } from './metrics';
 
@@ -42,7 +41,7 @@ export class MonitorMiddleware implements NestMiddleware {
       const { method, path } = req;
 
       const requestObj: TRequestValue = {
-        time: getTIMESTAMPTZ(),
+        time: new Date().getTime().toString(),
         method,
         path: path,
         errorMessage: '',
