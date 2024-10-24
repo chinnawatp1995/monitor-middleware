@@ -4,7 +4,7 @@ export type TMetrics<T> = {
 };
 
 export type TRequestValue = {
-  time: string;
+  time: number;
   method: string;
   path: string;
   statusCode?: number;

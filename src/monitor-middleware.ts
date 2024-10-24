@@ -41,7 +41,7 @@ export class MonitorMiddleware implements NestMiddleware {
       const { method, path } = req;
 
       const requestObj: TRequestValue = {
-        time: new Date().getTime().toString(),
+        time: new Date().getTime(),
         method,
         path: path,
         errorMessage: '',
