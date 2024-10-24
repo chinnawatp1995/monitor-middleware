@@ -24,19 +24,6 @@ export class MonitorService {
   onModuleInit() {
     this.collectResourceUsage();
     this.push();
-    let previousStats = this.getNetworkUsage();
-
-    setInterval(() => {
-      const currentStats = this.getNetworkUsage();
-      const received = currentStats.received - previousStats.received;
-      const transmitted = currentStats.transmitted - previousStats.transmitted;
-
-      console.log(
-        `Received: ${received} bytes, Transmitted: ${transmitted} bytes`,
-      );
-
-      previousStats = currentStats;
-    }, 1000);
   }
 
   private calculateCpuUsage(): number {
