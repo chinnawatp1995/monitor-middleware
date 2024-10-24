@@ -88,7 +88,7 @@ export class MonitorService {
       this.mem.add([MACHINE_ID], [memoryUsage.rss]);
       this.network.add(
         [MACHINE_ID],
-        [(networkUsage as any).rx_sec, (networkUsage as any).tx_sec],
+        [networkUsage[0].rx_sec, networkUsage[0].tx_sec],
       );
       this.resourceCollectionTimes = [
         ...this.resourceCollectionTimes,
