@@ -5,6 +5,7 @@ import * as sysinfo from 'systeminformation';
 import { MACHINE_ID } from './monitor-middleware';
 import { cpuMetric, memMetric, networkMetric, requestMetric } from './metrics';
 import { Metric } from './utils/Metric';
+import { CpuUsage, MemoryUsage, NetworkBandwidth } from './utils/metrics.type';
 
 @Injectable()
 export class MonitorService {
@@ -13,7 +14,7 @@ export class MonitorService {
   private mem: Metric;
   private network: Metric;
   private resourceCollectionTimes: number[] = [];
-  private lastCpuUsage: { idle: number; total: number } | null = null;
+  private lastCpuUsage: CpuUsage | null = null;
 
   constructor() {
     this.request = requestMetric;
@@ -51,7 +52,7 @@ export class MonitorService {
     }
   }
 
-  private calculateMemoryUsage(): { [key: string]: number } {
+  private calculateMemoryUsage(): MemoryUsage {
     const mem = process.memoryUsage();
     const totalMem = os.totalmem();
 
@@ -63,25 +64,21 @@ export class MonitorService {
     };
   }
 
-  private async calculatateNetworkBandwidth() {
+  private async calculatateNetworkBandwidth(): Promise<NetworkBandwidth[]> {
     const networkStats = await sysinfo.networkStats();
-    const bandwidthUsage = networkStats.map((stat) => ({
+    return networkStats.map((stat) => ({
       interface: stat.iface,
       rx_bytes: stat.rx_bytes,
       tx_bytes: stat.tx_bytes,
       rx_sec: stat.rx_sec ?? 0,
       tx_sec: stat.tx_sec ?? 0,
     }));
-
-    return bandwidthUsage;
   }
 
-  private async collectResourceUsage() {
+  private async collectResourceUsage(): Promise<void> {
     setInterval(async () => {
       const cpuUsage = this.calculateCpuUsage();
-
       const memoryUsage = this.calculateMemoryUsage();
-
       const networkUsage = await this.calculatateNetworkBandwidth();
 
       this.cpu.add([MACHINE_ID], [cpuUsage]);
@@ -94,7 +91,7 @@ export class MonitorService {
     }, 1 * 1_000);
   }
 
-  private resetMetrics() {
+  private resetMetrics(): void {
     this.request.reset();
     this.cpu.reset();
     this.mem.reset();
@@ -102,28 +99,18 @@ export class MonitorService {
     this.resourceCollectionTimes = [];
   }
 
-  private async push() {
+  private async push(): Promise<void> {
     setInterval(async () => {
       const endPoint = 'http://localhost:3010/monitor-server/collect-metrics';
       try {
-        // console.log(this.request.getAllValues());
-        // console.log(this.cpu.getAllValues());
-        // console.log(this.mem.getAllValues());
-        await axios.post(
-          // 'http://' +
-          // 	(process.env.END_POINT || 'localhost:') +
-          // 	(process.env.PORT || '3010') +
-          // 	'/monitor-server',
-          endPoint,
-          {
-            tags: this.request.getServiceLabels(),
-            resourceCollectionTimes: this.resourceCollectionTimes,
-            request: this.request.getAllValues(),
-            cpu: this.cpu.getAllValues(),
-            mem: this.mem.getAllValues(),
-            network: this.network.getAllValues(),
-          },
-        );
+        await axios.post(endPoint, {
+          tags: this.request.getServiceLabels(),
+          resourceCollectionTimes: this.resourceCollectionTimes,
+          request: this.request.getAllValues(),
+          cpu: this.cpu.getAllValues(),
+          mem: this.mem.getAllValues(),
+          network: this.network.getAllValues(),
+        });
         this.resetMetrics();
       } catch (e) {
         console.log('pushing metrics failed');

@@ -1,8 +1,3 @@
-export type TMetrics<T> = {
-  tag: string[];
-  values: T[];
-};
-
 export type TRequestValue = {
   time: number;
   method: string;
@@ -12,7 +7,22 @@ export type TRequestValue = {
   errorMessage?: string;
 };
 
-export type TResourceValue = {
-  time: string;
-  usage: number;
-};
+export interface CpuUsage {
+  idle: number;
+  total: number;
+}
+
+export interface MemoryUsage {
+  rss: number;
+  heapTotal: number;
+  heapUsed: number;
+  external: number;
+}
+
+export interface NetworkBandwidth {
+  interface: string;
+  rx_bytes: number;
+  tx_bytes: number;
+  rx_sec: number;
+  tx_sec: number;
+}
