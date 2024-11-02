@@ -30,7 +30,7 @@ export class MonitorMiddleware implements NestMiddleware {
     this.memMetric = memMetric;
     this.networkMetric = networkMetric;
 
-    this.requestMetric.setLabels([this.job, MACHINE_ID]);
+    this.requestMetric.setLabels([this.job, MACHINE_ID, this.controller]);
     this.cpuMetric.setLabels([MACHINE_ID]);
     this.memMetric.setLabels([MACHINE_ID]);
     this.networkMetric.setLabels([MACHINE_ID]);
@@ -75,7 +75,6 @@ export class MonitorMiddleware implements NestMiddleware {
             requestObj.statusCode,
             requestObj.responseTime,
             requestObj.errorMessage,
-            this.controller,
           ],
         );
       });

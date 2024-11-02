@@ -90,11 +90,8 @@ export class MonitorService {
         [MACHINE_ID],
         [networkUsage[0].rx_sec, networkUsage[0].tx_sec],
       );
-      this.resourceCollectionTimes = [
-        ...this.resourceCollectionTimes,
-        new Date().getTime(),
-      ];
-    }, 2 * 1_000);
+      this.resourceCollectionTimes.push(new Date().getTime());
+    }, 1 * 1_000);
   }
 
   private resetMetrics() {
@@ -127,7 +124,6 @@ export class MonitorService {
             network: this.network.getAllValues(),
           },
         );
-
         this.resetMetrics();
       } catch (e) {
         console.log('pushing metrics failed');
