@@ -19,7 +19,7 @@ export const promMetrics: any = {
     name: 'avg_response_time',
     help: 'average_response_time',
     labelNames: ['service', 'machine', 'controller', 'path', 'statusCode'],
-    buckets: [0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+    buckets: [25, 50, 100, 200, 400, 800, 1600, 3200, 6400, 1280],
   }),
   error: new promClient.Counter({
     name: 'total_error',
