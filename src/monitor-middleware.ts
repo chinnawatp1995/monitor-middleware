@@ -4,9 +4,10 @@ import { ThaiTime } from '@midas-soft/midas-common';
 import * as os from 'os';
 import { TRequestValue } from './utils/metrics.type';
 import { Metric } from './utils/Metric';
-import { requestMetric, cpuMetric, memMetric, networkMetric } from './metrics';
+import { promMetrics } from './metrics';
 
 export let MACHINE_ID = `${os.hostname()}`;
+export let SERVICE = '';
 
 interface MonitorMiddlewareConfig {
   jobName: string;
@@ -31,20 +32,8 @@ export class MonitorMiddleware implements NestMiddleware {
   constructor({ jobName, machineId, controllerName }: MonitorMiddlewareConfig) {
     this.job = jobName;
     MACHINE_ID = machineId ?? MACHINE_ID;
+    SERVICE = this.job;
     this.controller = controllerName ?? '';
-    this.requestMetric = requestMetric;
-    this.cpuMetric = cpuMetric;
-    this.memMetric = memMetric;
-    this.networkMetric = networkMetric;
-
-    this.initializeMetrics();
-  }
-
-  private initializeMetrics(): void {
-    this.requestMetric.setLabels([this.job, MACHINE_ID, this.controller]);
-    this.cpuMetric.setLabels([MACHINE_ID]);
-    this.memMetric.setLabels([MACHINE_ID]);
-    this.networkMetric.setLabels([MACHINE_ID]);
   }
 
   private handleResponse(
@@ -61,28 +50,45 @@ export class MonitorMiddleware implements NestMiddleware {
     requestObj.statusCode = responseBody.errTitle ? 500 : status;
 
     if (Number(status) >= 400 || responseBody.errTitle) {
-      requestObj.errorMessage = responseBody.errTitle;
+      promMetrics.error.inc({
+        service: this.job,
+        machine: MACHINE_ID,
+        controller: this.controller,
+        path: requestObj.path,
+        statusCode: requestObj.statusCode,
+        reason: requestObj.errorMessage,
+      });
     }
 
-    this.requestMetric.add(
-      [requestObj.path, String(requestObj.statusCode)],
-      [requestObj.time, requestObj.responseTime, requestObj.errorMessage],
+    promMetrics.responseTime.observe(
+      {
+        service: this.job,
+        machine: MACHINE_ID,
+        controller: this.controller,
+        path: requestObj.path,
+        statusCode: requestObj.statusCode,
+      },
+      requestObj.responseTime,
     );
   }
 
   use = (req: Request, res: Response, next: NextFunction): void => {
     try {
-      const { method, path } = req;
+      const { path } = req;
       const requestObj: TRequestValue = {
         time: new Date().getTime(),
-        method,
         path,
-        errorMessage: '',
       };
-
       const startTime = new ThaiTime().epoch;
       const originalSend = res.send;
       let responseBody: ResponseData;
+
+      promMetrics.totalRequest.inc({
+        service: this.job,
+        machine: MACHINE_ID,
+        controller: this.controller,
+        path: requestObj.path,
+      });
 
       res.send = function (body: any) {
         responseBody = JSON.parse(body);
@@ -95,7 +101,6 @@ export class MonitorMiddleware implements NestMiddleware {
     } catch (error) {
       console.error('Monitor middleware error:', error);
     }
-
     next();
   };
 }

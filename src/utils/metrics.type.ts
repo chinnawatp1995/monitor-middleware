@@ -1,6 +1,5 @@
 export type TRequestValue = {
   time: number;
-  method: string;
   path: string;
   statusCode?: number;
   responseTime?: number;
