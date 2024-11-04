@@ -125,7 +125,7 @@ export class MonitorService {
       } catch (error) {
         // console.error('Error pushing metrics:', error.message);
       }
-      this.resetMetrics();
+      // this.resetMetrics();
     }, this.METRICS_PUSH_INTERVAL);
   }
 }
