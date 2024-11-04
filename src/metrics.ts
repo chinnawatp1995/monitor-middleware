@@ -13,7 +13,7 @@ export const promMetrics: any = {
   totalRequest: new promClient.Counter({
     name: 'total_request',
     help: 'total request',
-    labelNames: ['service', 'machine', 'controller', 'path'],
+    labelNames: ['service', 'machine', 'controller', 'path', 'statusCode'],
   }),
   responseTime: new promClient.Histogram({
     name: 'avg_response_time',
