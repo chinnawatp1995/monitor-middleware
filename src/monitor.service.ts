@@ -102,12 +102,17 @@ export class MonitorService {
     }, this.RESOURCE_COLLECTION_INTERVAL);
   }
 
-  private resetMetrics(): void {}
+  private resetMetrics(): void {
+    for (const metric of Object.values(promMetrics)) {
+      (metric as any).reset();
+    }
+  }
 
   private async push(): Promise<void> {
     setInterval(async () => {
       try {
         axios.post(this.METRICS_ENDPOINT, {
+          time: new Date().getTime(),
           totalRequest: promMetrics.totalRequest.hashMap,
           responseTime: promMetrics.responseTime.hashMap,
           error: promMetrics.error.hashMap,
@@ -116,8 +121,9 @@ export class MonitorService {
           rxNetwork: promMetrics.rxNetwork.hashMap,
           txNetwork: promMetrics.txNetwork.hashMap,
         });
+        // console.log(promMetrics.totalRequest.hashMap);
       } catch (error) {
-        console.error('Error pushing metrics:', error.message);
+        // console.error('Error pushing metrics:', error.message);
       }
       this.resetMetrics();
     }, this.METRICS_PUSH_INTERVAL);
