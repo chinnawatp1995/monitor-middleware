@@ -4,11 +4,17 @@ import axios from 'axios';
 import * as sysinfo from 'systeminformation';
 import { MACHINE_ID, SERVICE } from './monitor-middleware';
 import { promMetrics } from './metrics';
-import { CpuUsage, MemoryUsage, NetworkBandwidth } from './utils/metrics.type';
+import { TMetricsRequest } from './utils/request.type';
+import {
+  CpuUsage,
+  MemoryUsage,
+  MetricInstance,
+  NetworkBandwidth,
+} from './utils/metrics.type';
 
 @Injectable()
 export class MonitorService {
-  private metrics: any;
+  private metrics: MetricInstance;
   private lastCpuUsage: CpuUsage | null = null;
   private readonly RESOURCE_COLLECTION_INTERVAL = 1000; // 1 second
   private readonly METRICS_PUSH_INTERVAL = 4000; // 4 seconds
@@ -111,16 +117,17 @@ export class MonitorService {
   private async push(): Promise<void> {
     setInterval(async () => {
       try {
-        await axios.post(this.METRICS_ENDPOINT, {
+        const metricsReq: TMetricsRequest = {
           time: new Date().getTime(),
-          totalRequest: promMetrics.totalRequest.hashMap,
-          responseTime: promMetrics.responseTime.hashMap,
-          error: promMetrics.error.hashMap,
-          cpu: promMetrics.cpu.hashMap,
-          mem: promMetrics.mem.hashMap,
-          rxNetwork: promMetrics.rxNetwork.hashMap,
-          txNetwork: promMetrics.txNetwork.hashMap,
-        });
+          totalRequest: (promMetrics.totalRequest as any).hashMap,
+          responseTime: (promMetrics.responseTime as any).hashMap,
+          error: (promMetrics.error as any).hashMap,
+          cpu: (promMetrics.cpu as any).hashMap,
+          mem: (promMetrics.mem as any).hashMap,
+          rxNetwork: (promMetrics.rxNetwork as any).hashMap,
+          txNetwork: (promMetrics.txNetwork as any).hashMap,
+        };
+        await axios.post(this.METRICS_ENDPOINT, metricsReq);
       } catch (error) {
         // console.error('Error pushing metrics:', error.message);
       }

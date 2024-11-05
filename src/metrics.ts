@@ -1,15 +1,8 @@
-import { Metric } from './utils/Metric';
+import { MetricInstance } from './utils/metrics.type';
 import * as promClient from 'prom-client';
 export type MetricType = 'request' | 'cpu' | 'memory' | 'network';
 
-export interface MetricInstance {
-  request: Metric;
-  cpu: Metric;
-  memory: Metric;
-  network: Metric;
-}
-
-export const promMetrics: any = {
+export const promMetrics: MetricInstance = {
   totalRequest: new promClient.Counter({
     name: 'total_request',
     help: 'total request',
@@ -33,11 +26,6 @@ export const promMetrics: any = {
       'reason',
     ],
   }),
-  // errorReason: new promClient.Counter({
-  //   name: 'error_ranking',
-  //   help: 'error ranking',
-  //   labelNames: ['service', 'machine', 'controller', 'path', 'errorReason'],
-  // }),
   cpu: new promClient.Gauge({
     name: 'avg_cpu',
     help: 'average cpu usage',

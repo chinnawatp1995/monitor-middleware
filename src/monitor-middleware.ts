@@ -2,9 +2,9 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { ThaiTime } from '@midas-soft/midas-common';
 import * as os from 'os';
-import { TRequestValue } from './utils/metrics.type';
 import { Metric } from './utils/Metric';
 import { promMetrics } from './metrics';
+import { RequestObj } from './utils/metrics.type';
 
 export let MACHINE_ID = `${os.hostname()}`;
 export let SERVICE = '';
@@ -37,7 +37,7 @@ export class MonitorMiddleware implements NestMiddleware {
   }
 
   private handleResponse(
-    requestObj: TRequestValue,
+    requestObj: RequestObj,
     startTime: number,
     res: Response,
     responseBody: ResponseData,
@@ -84,7 +84,7 @@ export class MonitorMiddleware implements NestMiddleware {
   use = (req: Request, res: Response, next: NextFunction): void => {
     try {
       const { path } = req;
-      const requestObj: TRequestValue = {
+      const requestObj: RequestObj = {
         time: new Date().getTime(),
         path,
       };

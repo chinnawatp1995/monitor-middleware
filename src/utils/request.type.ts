@@ -1,8 +1,12 @@
+import { CounterHashMap, GaugeHashMap, HistogramHashMap } from './metrics.type';
+
 export type TMetricsRequest = {
-  tags: string[];
-  resourceCollectionTimes: number[];
-  request: Record<string, (number | string)[]>;
-  cpu: Record<string, (number | string)[]>;
-  mem: Record<string, (number | string)[]>;
-  network: Record<string, (number | string)[]>;
+  time: number;
+  totalRequest: CounterHashMap;
+  responseTime: HistogramHashMap;
+  error: CounterHashMap;
+  cpu: GaugeHashMap;
+  mem: GaugeHashMap;
+  rxNetwork: GaugeHashMap;
+  txNetwork: GaugeHashMap;
 };
