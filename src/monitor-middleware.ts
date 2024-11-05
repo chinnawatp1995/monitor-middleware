@@ -1,13 +1,11 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { ThaiTime } from '@midas-soft/midas-common';
-import * as os from 'os';
-import { Metric } from './utils/Metric';
 import { promMetrics } from './metrics';
 import { RequestObj } from './utils/metrics.type';
 
-export let MACHINE_ID = `${os.hostname()}`;
-export let SERVICE = '';
+export let MACHINE_ID = undefined;
+export let SERVICE = undefined;
 
 interface MonitorMiddlewareConfig {
   jobName: string;
@@ -24,14 +22,10 @@ interface ResponseData {
 export class MonitorMiddleware implements NestMiddleware {
   private readonly job: string;
   private readonly controller: string;
-  private readonly requestMetric: Metric;
-  private readonly cpuMetric: Metric;
-  private readonly memMetric: Metric;
-  private readonly networkMetric: Metric;
 
   constructor({ jobName, machineId, controllerName }: MonitorMiddlewareConfig) {
     this.job = jobName;
-    MACHINE_ID = machineId ?? MACHINE_ID;
+    MACHINE_ID = machineId;
     SERVICE = this.job;
     this.controller = controllerName ?? '';
   }
