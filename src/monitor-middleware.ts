@@ -112,6 +112,15 @@ export function MonitorMiddlewareFactory(
   machineId: string,
   controller: string,
 ): MonitorMiddleware {
+  if (!job) {
+    throw new Error('Service name must be undefined');
+  }
+  if (!machineId) {
+    throw new Error('Machine Id must be undefined');
+  }
+  if (!controller) {
+    throw new Error('Controller must be undefined');
+  }
   return new MonitorMiddleware({
     jobName: job,
     machineId,

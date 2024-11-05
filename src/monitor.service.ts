@@ -16,9 +16,12 @@ import {
 export class MonitorService {
   private metrics: MetricInstance;
   private lastCpuUsage: CpuUsage | null = null;
-  private readonly RESOURCE_COLLECTION_INTERVAL = 1000; // 1 second
-  private readonly METRICS_PUSH_INTERVAL = 4000; // 4 seconds
+  private readonly RESOURCE_COLLECTION_INTERVAL =
+    Number(process.env.RESOURCE_COLLECTION_INTERVAL) || 20000; // 1 second
+  private readonly METRICS_PUSH_INTERVAL =
+    Number(process.env.PUSH_INTERVAL) || 4000; // 4 seconds
   private readonly METRICS_ENDPOINT =
+    process.env.MONITOR_URL ||
     'http://localhost:3010/monitor-server/collect-metrics';
 
   constructor() {
