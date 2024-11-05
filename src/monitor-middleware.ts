@@ -27,7 +27,7 @@ export class MonitorMiddleware implements NestMiddleware {
     this.job = jobName;
     MACHINE_ID = machineId;
     SERVICE = this.job;
-    this.controller = controllerName ?? '';
+    this.controller = controllerName;
   }
 
   private handleResponse(
