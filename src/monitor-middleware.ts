@@ -1,12 +1,11 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { ThaiTime } from '@midas-soft/midas-common';
-import * as os from 'os';
-import { TRequestValue } from './utils/metrics.type';
-import { Metric } from './utils/Metric';
-import { requestMetric, cpuMetric, memMetric, networkMetric } from './metrics';
+import { promMetrics } from './metrics';
+import { RequestObj } from './utils/metrics.type';
 
-export let MACHINE_ID = `${os.hostname()}`;
+export let MACHINE_ID = undefined;
+export let SERVICE = undefined;
 
 interface MonitorMiddlewareConfig {
   jobName: string;
@@ -23,32 +22,16 @@ interface ResponseData {
 export class MonitorMiddleware implements NestMiddleware {
   private readonly job: string;
   private readonly controller: string;
-  private readonly requestMetric: Metric;
-  private readonly cpuMetric: Metric;
-  private readonly memMetric: Metric;
-  private readonly networkMetric: Metric;
 
   constructor({ jobName, machineId, controllerName }: MonitorMiddlewareConfig) {
     this.job = jobName;
-    MACHINE_ID = machineId ?? MACHINE_ID;
+    MACHINE_ID = machineId;
+    SERVICE = this.job;
     this.controller = controllerName ?? '';
-    this.requestMetric = requestMetric;
-    this.cpuMetric = cpuMetric;
-    this.memMetric = memMetric;
-    this.networkMetric = networkMetric;
-
-    this.initializeMetrics();
-  }
-
-  private initializeMetrics(): void {
-    this.requestMetric.setLabels([this.job, MACHINE_ID, this.controller]);
-    this.cpuMetric.setLabels([MACHINE_ID]);
-    this.memMetric.setLabels([MACHINE_ID]);
-    this.networkMetric.setLabels([MACHINE_ID]);
   }
 
   private handleResponse(
-    requestObj: TRequestValue,
+    requestObj: RequestObj,
     startTime: number,
     res: Response,
     responseBody: ResponseData,
@@ -61,25 +44,44 @@ export class MonitorMiddleware implements NestMiddleware {
     requestObj.statusCode = responseBody.errTitle ? 500 : status;
 
     if (Number(status) >= 400 || responseBody.errTitle) {
-      requestObj.errorMessage = responseBody.errTitle;
+      requestObj.errorMessage = responseBody.errMsg;
+      promMetrics.error.inc({
+        service: this.job,
+        machine: MACHINE_ID,
+        controller: this.controller,
+        path: requestObj.path,
+        statusCode: requestObj.statusCode,
+        reason: requestObj.errorMessage.slice(30),
+      });
     }
 
-    this.requestMetric.add(
-      [requestObj.path, String(requestObj.statusCode)],
-      [requestObj.time, requestObj.responseTime, requestObj.errorMessage],
+    promMetrics.totalRequest.inc({
+      service: this.job,
+      machine: MACHINE_ID,
+      controller: this.controller,
+      path: requestObj.path,
+      statusCode: requestObj.statusCode,
+    });
+
+    promMetrics.responseTime.observe(
+      {
+        service: this.job,
+        machine: MACHINE_ID,
+        controller: this.controller,
+        path: requestObj.path,
+        statusCode: requestObj.statusCode,
+      },
+      requestObj.responseTime,
     );
   }
 
   use = (req: Request, res: Response, next: NextFunction): void => {
     try {
-      const { method, path } = req;
-      const requestObj: TRequestValue = {
+      const { path } = req;
+      const requestObj: RequestObj = {
         time: new Date().getTime(),
-        method,
         path,
-        errorMessage: '',
       };
-
       const startTime = new ThaiTime().epoch;
       const originalSend = res.send;
       let responseBody: ResponseData;
@@ -95,7 +97,6 @@ export class MonitorMiddleware implements NestMiddleware {
     } catch (error) {
       console.error('Monitor middleware error:', error);
     }
-
     next();
   };
 }
@@ -105,6 +106,15 @@ export function MonitorMiddlewareFactory(
   machineId: string,
   controller: string,
 ): MonitorMiddleware {
+  if (!job) {
+    throw new Error('Service name must be undefined');
+  }
+  if (!machineId) {
+    throw new Error('Machine Id must be undefined');
+  }
+  if (!controller) {
+    throw new Error('Controller must be undefined');
+  }
   return new MonitorMiddleware({
     jobName: job,
     machineId,

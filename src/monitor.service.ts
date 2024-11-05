@@ -2,25 +2,30 @@ import { Injectable } from '@nestjs/common';
 import * as os from 'os';
 import axios from 'axios';
 import * as sysinfo from 'systeminformation';
-import { MACHINE_ID } from './monitor-middleware';
-import { cpuMetric, memMetric, networkMetric, requestMetric } from './metrics';
-import { Metric } from './utils/Metric';
-import { CpuUsage, MemoryUsage, NetworkBandwidth } from './utils/metrics.type';
+import { MACHINE_ID, SERVICE } from './monitor-middleware';
+import { promMetrics } from './metrics';
+import { TMetricsRequest } from './utils/request.type';
+import {
+  CpuUsage,
+  MemoryUsage,
+  MetricInstance,
+  NetworkBandwidth,
+} from './utils/metrics.type';
 
 @Injectable()
 export class MonitorService {
-  private request: Metric;
-  private cpu: Metric;
-  private mem: Metric;
-  private network: Metric;
-  private resourceCollectionTimes: number[] = [];
+  private metrics: MetricInstance;
   private lastCpuUsage: CpuUsage | null = null;
+  private readonly RESOURCE_COLLECTION_INTERVAL =
+    Number(process.env.RESOURCE_COLLECTION_INTERVAL) || 20000; // 1 second
+  private readonly METRICS_PUSH_INTERVAL =
+    Number(process.env.PUSH_INTERVAL) || 4000; // 4 seconds
+  private readonly METRICS_ENDPOINT =
+    process.env.MONITOR_URL ||
+    'http://localhost:3010/monitor-server/collect-metrics';
 
   constructor() {
-    this.request = requestMetric;
-    this.cpu = cpuMetric;
-    this.mem = memMetric;
-    this.network = networkMetric;
+    this.metrics = promMetrics;
   }
 
   onModuleInit() {
@@ -30,26 +35,31 @@ export class MonitorService {
 
   private calculateCpuUsage(): number {
     const cpus = os.cpus();
-    let idleTime = 0;
-    let totalTime = 0;
+    const cpuUsage = cpus.reduce(
+      (acc, cpu) => {
+        const totalTime = Object.values(cpu.times).reduce(
+          (sum, time) => sum + time,
+          0,
+        );
+        return {
+          idle: acc.idle + cpu.times.idle,
+          total: acc.total + totalTime,
+        };
+      },
+      { idle: 0, total: 0 },
+    );
 
-    for (const cpu of cpus) {
-      for (const type in cpu.times) {
-        totalTime += cpu.times[type];
-      }
-      idleTime += cpu.times.idle;
-    }
-
-    if (this.lastCpuUsage) {
-      const idleDiff = idleTime - this.lastCpuUsage.idle;
-      const totalDiff = totalTime - this.lastCpuUsage.total;
-      const cpuUsage = 100 * (1 - idleDiff / totalDiff); // Convert to percentage
-      this.lastCpuUsage = { idle: idleTime, total: totalTime };
-      return cpuUsage;
-    } else {
-      this.lastCpuUsage = { idle: idleTime, total: totalTime };
+    if (!this.lastCpuUsage) {
+      this.lastCpuUsage = cpuUsage;
       return 0;
     }
+
+    const idleDiff = cpuUsage.idle - this.lastCpuUsage.idle;
+    const totalDiff = cpuUsage.total - this.lastCpuUsage.total;
+    const usage = 100 * (1 - idleDiff / totalDiff);
+
+    this.lastCpuUsage = cpuUsage;
+    return usage;
   }
 
   private calculateMemoryUsage(): MemoryUsage {
@@ -57,11 +67,15 @@ export class MonitorService {
     const totalMem = os.totalmem();
 
     return {
-      rss: 100 * (mem.rss / totalMem),
-      heapTotal: 100 * (mem.heapTotal / totalMem),
-      heapUsed: 100 * (mem.heapUsed / totalMem),
-      external: 100 * (mem.external / totalMem),
+      rss: this.calculatePercentage(mem.rss, totalMem),
+      heapTotal: this.calculatePercentage(mem.heapTotal, totalMem),
+      heapUsed: this.calculatePercentage(mem.heapUsed, totalMem),
+      external: this.calculatePercentage(mem.external, totalMem),
     };
+  }
+
+  private calculatePercentage(value: number, total: number): number {
+    return 100 * (value / total);
   }
 
   private async calculatateNetworkBandwidth(): Promise<NetworkBandwidth[]> {
@@ -77,44 +91,50 @@ export class MonitorService {
 
   private async collectResourceUsage(): Promise<void> {
     setInterval(async () => {
-      const cpuUsage = this.calculateCpuUsage();
-      const memoryUsage = this.calculateMemoryUsage();
-      const networkUsage = await this.calculatateNetworkBandwidth();
+      try {
+        const cpuUsage = this.calculateCpuUsage();
+        const memoryUsage = this.calculateMemoryUsage();
+        const networkUsage = await this.calculatateNetworkBandwidth();
 
-      this.cpu.add([MACHINE_ID], [cpuUsage]);
-      this.mem.add([MACHINE_ID], [memoryUsage.rss]);
-      this.network.add(
-        [MACHINE_ID],
-        [networkUsage[0].rx_sec, networkUsage[0].tx_sec],
-      );
-      this.resourceCollectionTimes.push(new Date().getTime());
-    }, 1 * 1_000);
+        const labels = {
+          service: SERVICE,
+          machine: MACHINE_ID,
+        };
+
+        this.metrics.cpu.set(labels, cpuUsage);
+        this.metrics.mem.set(labels, memoryUsage.rss);
+        this.metrics.rxNetwork.set(labels, networkUsage[0].rx_sec);
+        this.metrics.txNetwork.set(labels, networkUsage[0].tx_sec);
+      } catch (error) {
+        console.error('Error collecting resource usage:', error);
+      }
+    }, this.RESOURCE_COLLECTION_INTERVAL);
   }
 
   private resetMetrics(): void {
-    this.request.reset();
-    this.cpu.reset();
-    this.mem.reset();
-    this.network.reset();
-    this.resourceCollectionTimes = [];
+    for (const metric of Object.values(promMetrics)) {
+      (metric as any).reset();
+    }
   }
 
   private async push(): Promise<void> {
     setInterval(async () => {
-      const endPoint = 'http://localhost:3010/monitor-server/collect-metrics';
       try {
-        await axios.post(endPoint, {
-          tags: this.request.getServiceLabels(),
-          resourceCollectionTimes: this.resourceCollectionTimes,
-          request: this.request.getAllValues(),
-          cpu: this.cpu.getAllValues(),
-          mem: this.mem.getAllValues(),
-          network: this.network.getAllValues(),
-        });
-        this.resetMetrics();
-      } catch (e) {
-        console.log('pushing metrics failed');
+        const metricsReq: TMetricsRequest = {
+          time: new Date().getTime(),
+          totalRequest: (promMetrics.totalRequest as any).hashMap,
+          responseTime: (promMetrics.responseTime as any).hashMap,
+          error: (promMetrics.error as any).hashMap,
+          cpu: (promMetrics.cpu as any).hashMap,
+          mem: (promMetrics.mem as any).hashMap,
+          rxNetwork: (promMetrics.rxNetwork as any).hashMap,
+          txNetwork: (promMetrics.txNetwork as any).hashMap,
+        };
+        await axios.post(this.METRICS_ENDPOINT, metricsReq);
+      } catch (error) {
+        // console.error('Error pushing metrics:', error.message);
       }
-    }, 4 * 1_000);
+      // this.resetMetrics();
+    }, this.METRICS_PUSH_INTERVAL);
   }
 }
