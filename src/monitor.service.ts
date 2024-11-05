@@ -111,7 +111,7 @@ export class MonitorService {
   private async push(): Promise<void> {
     setInterval(async () => {
       try {
-        axios.post(this.METRICS_ENDPOINT, {
+        await axios.post(this.METRICS_ENDPOINT, {
           time: new Date().getTime(),
           totalRequest: promMetrics.totalRequest.hashMap,
           responseTime: promMetrics.responseTime.hashMap,
@@ -121,7 +121,6 @@ export class MonitorService {
           rxNetwork: promMetrics.rxNetwork.hashMap,
           txNetwork: promMetrics.txNetwork.hashMap,
         });
-        // console.log(promMetrics.totalRequest.hashMap);
       } catch (error) {
         // console.error('Error pushing metrics:', error.message);
       }

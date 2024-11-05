@@ -50,15 +50,24 @@ export class MonitorMiddleware implements NestMiddleware {
     requestObj.statusCode = responseBody.errTitle ? 500 : status;
 
     if (Number(status) >= 400 || responseBody.errTitle) {
+      requestObj.errorMessage = responseBody.errMsg;
       promMetrics.error.inc({
         service: this.job,
         machine: MACHINE_ID,
         controller: this.controller,
         path: requestObj.path,
         statusCode: requestObj.statusCode,
-        reason: requestObj.errorMessage,
+        reason: requestObj.errorMessage.slice(30),
       });
     }
+
+    promMetrics.totalRequest.inc({
+      service: this.job,
+      machine: MACHINE_ID,
+      controller: this.controller,
+      path: requestObj.path,
+      statusCode: requestObj.statusCode,
+    });
 
     promMetrics.responseTime.observe(
       {
@@ -82,13 +91,6 @@ export class MonitorMiddleware implements NestMiddleware {
       const startTime = new ThaiTime().epoch;
       const originalSend = res.send;
       let responseBody: ResponseData;
-
-      promMetrics.totalRequest.inc({
-        service: this.job,
-        machine: MACHINE_ID,
-        controller: this.controller,
-        path: requestObj.path,
-      });
 
       res.send = function (body: any) {
         responseBody = JSON.parse(body);
