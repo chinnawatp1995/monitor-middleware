@@ -5,6 +5,7 @@ export type RequestObj = {
   path: string;
   statusCode?: number;
   responseTime?: number;
+  errorTitle?: string;
   errorMessage?: string;
 };
 

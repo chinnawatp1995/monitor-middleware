@@ -23,6 +23,7 @@ export const promMetrics: MetricInstance = {
       'controller',
       'path',
       'statusCode',
+      'title',
       'reason',
     ],
   }),

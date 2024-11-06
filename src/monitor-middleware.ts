@@ -1,6 +1,5 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { ThaiTime } from '@midas-soft/midas-common';
 import { promMetrics } from './metrics';
 import { RequestObj } from './utils/metrics.type';
 
@@ -36,7 +35,7 @@ export class MonitorMiddleware implements NestMiddleware {
     res: Response,
     responseBody: ResponseData,
   ): void {
-    const endTime = new ThaiTime().epoch;
+    const endTime = new Date().getTime();
     const resTime = endTime - startTime;
     const status = res.statusCode;
 
@@ -51,6 +50,7 @@ export class MonitorMiddleware implements NestMiddleware {
         controller: this.controller,
         path: requestObj.path,
         statusCode: requestObj.statusCode,
+        title: responseBody.errTitle,
         reason: requestObj.errorMessage.slice(30),
       });
     }
@@ -82,7 +82,7 @@ export class MonitorMiddleware implements NestMiddleware {
         time: new Date().getTime(),
         path,
       };
-      const startTime = new ThaiTime().epoch;
+      const startTime = new Date().getTime();
       const originalSend = res.send;
       let responseBody: ResponseData;
 
